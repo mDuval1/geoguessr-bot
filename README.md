@@ -12,7 +12,9 @@ conda activate geoguessr
 pip install -r requirements.txt
 ```
 
-Launch a session, use a cookie manager to get the following cookies from your computer.
+Get your credentials, so that the bot is able to connect.
+- Launch the game
+- Use a cookie manager (like EditThisCookie) to get the following cookies from your computer `G_ENABLED_IDPS`, `_ncfa`, `devicetoken`.
 
 Write a file `cookies.json` at the root
 
