@@ -1,4 +1,5 @@
 import time
+from selenium.webdriver.common.by import By
 from os import system
 import json
 from typing import Dict
@@ -21,7 +22,8 @@ def start_bot(driver: WebDriver):
         events = read_events(driver)
         nb_streak_events = len(get_streak_events(driver, events))
         if nb_streak_events > 0:
-            say_current_country(driver, get_streak_event(driver, events))
+            # say_current_country(driver, get_streak_event(driver, events))
+            send_current_country(driver, get_streak_event(driver, events))
         time.sleep(SLEEP_BETWEEN_COUNTRY_ATTEMPTS)
 
 
@@ -31,6 +33,66 @@ def say_current_country(driver: WebDriver, streak_event):
     country = CODE_TO_COUNTRY[streak_location_code]
     system(f"say {country}")
     print(f"Country is {country}")
+
+
+BASE_CODE = """
+    const map = document.getElementsByClassName('guess-map')[0];
+    function FindReact(dom, traverseUp = 0) {
+        const key = Object.keys(dom).find((key) => {
+            return (
+            key.startsWith("__reactFiber$") || // react 17+
+            key.startsWith("__reactInternalInstance$")
+            ); // react <17
+        });
+        const domFiber = dom[key];
+        if (domFiber == null) return null;
+
+        // react 16+
+        const GetCompFiber = (fiber) => {
+            //return fiber._debugOwner; // this also works, but is __DEV__ only
+            let parentFiber = fiber.return;
+            while (typeof parentFiber.type == "string") {
+            parentFiber = parentFiber.return;
+            }
+            return parentFiber;
+        };
+        let compFiber = GetCompFiber(domFiber);
+        for (let i = 0; i < traverseUp; i++) {
+            compFiber = GetCompFiber(compFiber);
+        }
+        return compFiber;
+    };
+    const mapFiber = FindReact(map);
+    """
+
+
+def get_code_to_execute(streak_location_code: str):
+    return (
+        BASE_CODE
+        + f'mapFiber.memoizedProps.onRegionSelected("{streak_location_code}");'
+    )
+
+
+def submit_guess(driver: WebDriver):
+    perform_guess_button = driver.find_element(
+        By.XPATH, "//button[@data-qa='perform-guess']"
+    )
+    perform_guess_button.click()
+    time.sleep(1)
+
+    to_next_round = driver.find_element(
+        By.XPATH, "//button[@data-qa='close-round-result']"
+    )
+    to_next_round.click()
+    time.sleep(1)
+
+
+def send_current_country(driver: WebDriver, streak_event):
+    current_round = get_last_position(driver, streak_event)
+    streak_location_code = current_round["streakLocationCode"]
+    driver.execute_script(get_code_to_execute(streak_location_code))
+    time.sleep(0.2)
+    submit_guess(driver)
 
 
 def get_last_position(driver: WebDriver, streak_event):
